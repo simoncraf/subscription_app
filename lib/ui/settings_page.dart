@@ -24,6 +24,12 @@ class _SettingsPageState extends State<SettingsPage> {
 
   static const _currencies = <String>['EUR', 'PLN', 'USD'];
 
+  // ✅ NEW: monthly view options
+  static const _monthlyViews = <String, String>{
+    'next': 'Next month',
+    'current': 'Current month',
+  };
+
   @override
   void initState() {
     super.initState();
@@ -59,7 +65,13 @@ class _SettingsPageState extends State<SettingsPage> {
           if (_saving)
             const Padding(
               padding: EdgeInsets.only(right: 16),
-              child: Center(child: SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))),
+              child: Center(
+                child: SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              ),
             ),
         ],
       ),
@@ -70,7 +82,10 @@ class _SettingsPageState extends State<SettingsPage> {
               children: [
                 Text(
                   'General',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 8),
 
@@ -82,7 +97,8 @@ class _SettingsPageState extends State<SettingsPage> {
                     border: OutlineInputBorder(),
                   ),
                   items: _languages.entries
-                      .map((e) => DropdownMenuItem(value: e.key, child: Text(e.value)))
+                      .map((e) =>
+                          DropdownMenuItem(value: e.key, child: Text(e.value)))
                       .toList(),
                   onChanged: (v) {
                     if (v == null) return;
@@ -111,7 +127,10 @@ class _SettingsPageState extends State<SettingsPage> {
 
                 Text(
                   'Home page',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 8),
 
@@ -123,20 +142,54 @@ class _SettingsPageState extends State<SettingsPage> {
                     border: OutlineInputBorder(),
                   ),
                   items: const [
-                    DropdownMenuItem(value: 'monthly', child: Text('Monthly total')),
+                    DropdownMenuItem(
+                        value: 'monthly', child: Text('Monthly total')),
                     DropdownMenuItem(value: 'annual', child: Text('Annual total')),
                   ],
                   onChanged: (v) {
                     if (v == null) return;
-                    _update(s.copyWith(homeTotalMode: v));
+
+                    // ✅ If switching away from monthly, keep monthlyTotalView as-is.
+                    // ✅ If switching to monthly and monthlyTotalView is empty for any reason, default to 'next'.
+                    final next = (v == 'monthly' &&
+                            (s.monthlyTotalView.trim().isEmpty))
+                        ? s.copyWith(homeTotalMode: v, monthlyTotalView: 'next')
+                        : s.copyWith(homeTotalMode: v);
+
+                    _update(next);
                   },
                 ),
+
+                const SizedBox(height: 12),
+
+                // ✅ NEW: Monthly view (only shown when monthly totals are selected)
+                if (s.homeTotalMode == 'monthly')
+                  DropdownButtonFormField<String>(
+                    value: s.monthlyTotalView,
+                    decoration: const InputDecoration(
+                      labelText: 'Monthly view',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: _monthlyViews.entries
+                        .map((e) => DropdownMenuItem(
+                              value: e.key,
+                              child: Text(e.value),
+                            ))
+                        .toList(),
+                    onChanged: (v) {
+                      if (v == null) return;
+                      _update(s.copyWith(monthlyTotalView: v));
+                    },
+                  ),
 
                 const SizedBox(height: 24),
 
                 Text(
                   'Subscription card fields',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 8),
 
@@ -173,9 +226,8 @@ class _SettingsPageState extends State<SettingsPage> {
 
                 const SizedBox(height: 12),
 
-                // Optional: quick explanation
                 Text(
-                  'These preferences are saved on your phone. We will apply them to Home and other screens next.',
+                  'These preferences are saved on your phone.',
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
               ],
