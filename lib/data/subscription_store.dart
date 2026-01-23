@@ -45,4 +45,17 @@ class SubscriptionStore {
 
     await box.put(id, updated);
   }
+
+  Future<void> reactivate(String id) async {
+    final box = await _box();
+    final existing = box.get(id);
+    if (existing == null) return;
+
+    final updated = existing.copyWith(
+      isCanceled: false,
+      canceledAt: null,
+    );
+
+    await box.put(id, updated);
+  }
 }
