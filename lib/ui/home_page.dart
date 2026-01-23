@@ -104,7 +104,7 @@ class _HomePageState extends State<HomePage> {
       ),
     );
 
-    return result ?? false; // IMPORTANT: never return null
+    return result ?? false;
   }
 
   @override
@@ -137,7 +137,6 @@ class _HomePageState extends State<HomePage> {
           final canceled = subs.where((s) => s.isCanceled).toList();
           final totals = _calculateTotals(active);
 
-          // Optional: sort by soonest renewal (active), newest canceled (history)
           active.sort((a, b) => a.renewalDate.compareTo(b.renewalDate));
           canceled.sort((a, b) {
             final at = a.canceledAt ?? DateTime.fromMillisecondsSinceEpoch(0);
@@ -211,28 +210,16 @@ class _HomePageState extends State<HomePage> {
                         padding: const EdgeInsets.only(right: 16),
                         child: const Icon(Icons.cancel),
                       ),
-                      confirmDismiss: (_) async {
-                        return _confirmCancel(s.name);
-                      },
+                      confirmDismiss: (_) async => _confirmCancel(s.name),
                       onDismissed: (_) async {
                         await _store.cancel(s.id);
                         await _refresh();
                       },
+
+                      // ✅ OVERFLOW FIX: replace ListTile with custom layout
                       child: Card(
-                        child: ListTile(
-                          title: Text(s.name),
-                          subtitle: Text(
-                            '${s.price.toStringAsFixed(2)} ${s.currency} • renews ${df.format(s.renewalDate)}',
-                          ),
-                          trailing: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              Text('${s.usagePerWeek}/wk'),
-                              const SizedBox(height: 6),
-                              _warningChips(s),
-                            ],
-                          ),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(12),
                           onTap: () async {
                             await Navigator.push(
                               context,
@@ -244,6 +231,53 @@ class _HomePageState extends State<HomePage> {
                             );
                             await _refresh();
                           },
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
+                            ),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // LEFT
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        s.name,
+                                        style: const TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        '${s.price.toStringAsFixed(2)} ${s.currency} • renews ${df.format(s.renewalDate)}',
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+
+                                // RIGHT
+                                ConstrainedBox(
+                                  constraints: const BoxConstraints(maxWidth: 160),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                      Text('${s.usagePerWeek}/wk'),
+                                      const SizedBox(height: 6),
+                                      Align(
+                                        alignment: Alignment.centerRight,
+                                        child: _warningChips(s),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -281,7 +315,6 @@ class _HomePageState extends State<HomePage> {
                     padding: const EdgeInsets.only(bottom: 8),
                     child: Card(
                       child: ListTile(
-                        enabled: true, // allow opening details if you want
                         title: Text(s.name),
                         subtitle: Text(
                           '${s.price.toStringAsFixed(2)} ${s.currency} • $canceledText',
