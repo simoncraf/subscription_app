@@ -19,12 +19,7 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage> {
   final _df = DateFormat('yyyy-MM-dd');
 
   Future<Subscription?> _load() async {
-    final all = await _store.getAll();
-    try {
-      return all.firstWhere((s) => s.id == widget.subscriptionId);
-    } catch (_) {
-      return null;
-    }
+    return _store.getById(widget.subscriptionId);
   }
 
   Future<void> _edit(Subscription s) async {
@@ -46,8 +41,8 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage> {
       builder: (_) => AlertDialog(
         title: const Text('Cancel subscription'),
         content: Text(
-          'Are you sure you want to cancel "${s.name}"?\n\n'
-          'This will remove it from your subscriptions.',
+          'Cancel "${s.name}"?\n\n'
+          'It will be moved to history (not deleted).',
         ),
         actions: [
           TextButton(
@@ -64,10 +59,10 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage> {
 
     if (confirmed != true) return;
 
-    await _store.delete(s.id);
+    await _store.cancel(s.id);
 
     if (!mounted) return;
-    Navigator.pop(context, true); // go back to home
+    Navigator.pop(context, true);
   }
 
   Widget _row(String label, String value) {
@@ -98,7 +93,7 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage> {
             builder: (context, snapshot) {
               final sub = snapshot.data;
               if (sub == null) return const SizedBox.shrink();
-
+              if (sub.isCanceled) return const SizedBox.shrink();
               return PopupMenuButton<String>(
                 onSelected: (v) {
                   if (v == 'edit') _edit(sub);

@@ -53,7 +53,8 @@ class _AddSubscriptionSheetState extends State<AddSubscriptionSheet> {
       _usagePerWeek = s.usagePerWeek;
 
       _remindersEnabled = s.remindersEnabled;
-      _reminderDaysBefore = s.reminderDaysBefore == 0 ? 1 : s.reminderDaysBefore;
+      _reminderDaysBefore =
+          s.reminderDaysBefore == 0 ? 1 : s.reminderDaysBefore;
     }
   }
 
@@ -93,7 +94,7 @@ class _AddSubscriptionSheetState extends State<AddSubscriptionSheet> {
     final existing = widget.initial;
 
     final sub = Subscription(
-      id: existing?.id ?? const Uuid().v4(), // keep same id when editing
+      id: existing?.id ?? const Uuid().v4(),
       name: _nameCtrl.text.trim(),
       price: price,
       currency: _currency,
@@ -104,6 +105,8 @@ class _AddSubscriptionSheetState extends State<AddSubscriptionSheet> {
       usagePerWeek: _usagePerWeek,
       remindersEnabled: _remindersEnabled,
       reminderDaysBefore: _remindersEnabled ? _reminderDaysBefore : 0,
+      isCanceled: existing?.isCanceled ?? false,
+      canceledAt: existing?.canceledAt,
     );
 
     // Use upsert (put) so edit updates instead of creating a new record
@@ -135,8 +138,11 @@ class _AddSubscriptionSheetState extends State<AddSubscriptionSheet> {
                   children: [
                     Expanded(
                       child: Text(
-                        widget.initial == null ? 'Add subscription' : 'Edit subscription',
-                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                        widget.initial == null
+                            ? 'Add subscription'
+                            : 'Edit subscription',
+                        style: const TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.w600),
                       ),
                     ),
                     IconButton(
@@ -165,15 +171,20 @@ class _AddSubscriptionSheetState extends State<AddSubscriptionSheet> {
                           Expanded(
                             child: TextFormField(
                               controller: _priceCtrl,
-                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                      decimal: true),
                               decoration: const InputDecoration(
                                 labelText: 'Price',
                                 border: OutlineInputBorder(),
                               ),
                               validator: (v) {
-                                if (v == null || v.trim().isEmpty) return 'Required';
-                                final parsed = double.tryParse(v.replaceAll(',', '.'));
-                                if (parsed == null || parsed < 0) return 'Invalid price';
+                                if (v == null || v.trim().isEmpty)
+                                  return 'Required';
+                                final parsed =
+                                    double.tryParse(v.replaceAll(',', '.'));
+                                if (parsed == null || parsed < 0)
+                                  return 'Invalid price';
                                 return null;
                               },
                             ),
@@ -184,11 +195,15 @@ class _AddSubscriptionSheetState extends State<AddSubscriptionSheet> {
                             child: DropdownButtonFormField<String>(
                               value: _currency,
                               items: const [
-                                DropdownMenuItem(value: 'EUR', child: Text('EUR')),
-                                DropdownMenuItem(value: 'PLN', child: Text('PLN')),
-                                DropdownMenuItem(value: 'USD', child: Text('USD')),
+                                DropdownMenuItem(
+                                    value: 'EUR', child: Text('EUR')),
+                                DropdownMenuItem(
+                                    value: 'PLN', child: Text('PLN')),
+                                DropdownMenuItem(
+                                    value: 'USD', child: Text('USD')),
                               ],
-                              onChanged: (v) => setState(() => _currency = v ?? 'EUR'),
+                              onChanged: (v) =>
+                                  setState(() => _currency = v ?? 'EUR'),
                               decoration: const InputDecoration(
                                 labelText: 'Currency',
                                 border: OutlineInputBorder(),
@@ -224,7 +239,9 @@ class _AddSubscriptionSheetState extends State<AddSubscriptionSheet> {
                           contentPadding: EdgeInsets.zero,
                           title: const Text('Trial ends'),
                           subtitle: Text(
-                            _trialEnds == null ? 'Not set' : _df.format(_trialEnds!),
+                            _trialEnds == null
+                                ? 'Not set'
+                                : _df.format(_trialEnds!),
                           ),
                           trailing: const Icon(Icons.calendar_month),
                           onTap: () => _pickDate(
@@ -257,13 +274,15 @@ class _AddSubscriptionSheetState extends State<AddSubscriptionSheet> {
                         max: 21,
                         divisions: 21,
                         label: '$_usagePerWeek',
-                        onChanged: (v) => setState(() => _usagePerWeek = v.toInt()),
+                        onChanged: (v) =>
+                            setState(() => _usagePerWeek = v.toInt()),
                       ),
                       const SizedBox(height: 12),
                       SwitchListTile(
                         contentPadding: EdgeInsets.zero,
                         title: const Text('Reminders'),
-                        subtitle: const Text('Save preference (notifications later)'),
+                        subtitle:
+                            const Text('Save preference (notifications later)'),
                         value: _remindersEnabled,
                         onChanged: (v) => setState(() => _remindersEnabled = v),
                       ),
@@ -280,7 +299,8 @@ class _AddSubscriptionSheetState extends State<AddSubscriptionSheet> {
                             DropdownMenuItem(value: 7, child: Text('7 days')),
                             DropdownMenuItem(value: 14, child: Text('14 days')),
                           ],
-                          onChanged: (v) => setState(() => _reminderDaysBefore = v ?? 1),
+                          onChanged: (v) =>
+                              setState(() => _reminderDaysBefore = v ?? 1),
                         ),
                       const SizedBox(height: 20),
                       FilledButton(

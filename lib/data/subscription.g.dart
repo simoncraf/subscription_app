@@ -28,13 +28,15 @@ class SubscriptionAdapter extends TypeAdapter<Subscription> {
       usagePerWeek: fields[8] as int,
       remindersEnabled: fields[9] as bool,
       reminderDaysBefore: fields[10] as int,
+      isCanceled: fields[11] as bool,
+      canceledAt: fields[12] as DateTime?,
     );
   }
 
   @override
   void write(BinaryWriter writer, Subscription obj) {
     writer
-      ..writeByte(11)
+      ..writeByte(13)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -56,7 +58,11 @@ class SubscriptionAdapter extends TypeAdapter<Subscription> {
       ..writeByte(9)
       ..write(obj.remindersEnabled)
       ..writeByte(10)
-      ..write(obj.reminderDaysBefore);
+      ..write(obj.reminderDaysBefore)
+      ..writeByte(11)
+      ..write(obj.isCanceled)
+      ..writeByte(12)
+      ..write(obj.canceledAt);
   }
 
   @override

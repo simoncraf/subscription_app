@@ -37,6 +37,12 @@ class Subscription extends HiveObject {
   @HiveField(10)
   final int reminderDaysBefore; // e.g. 1, 3, 7
 
+  @HiveField(11)
+  final bool isCanceled;
+
+  @HiveField(12)
+  final DateTime? canceledAt;
+
   Subscription({
     required this.id,
     required this.name,
@@ -49,6 +55,8 @@ class Subscription extends HiveObject {
     required this.usagePerWeek,
     required this.remindersEnabled,
     required this.reminderDaysBefore,
+    required this.isCanceled,
+    required this.canceledAt,
   });
 
   Subscription copyWith({
@@ -63,6 +71,8 @@ class Subscription extends HiveObject {
     int? usagePerWeek,
     bool? remindersEnabled,
     int? reminderDaysBefore,
+    bool? isCanceled,
+    DateTime? canceledAt,
   }) {
     return Subscription(
       id: id ?? this.id,
@@ -76,6 +86,8 @@ class Subscription extends HiveObject {
       usagePerWeek: usagePerWeek ?? this.usagePerWeek,
       remindersEnabled: remindersEnabled ?? this.remindersEnabled,
       reminderDaysBefore: reminderDaysBefore ?? this.reminderDaysBefore,
+      isCanceled: isCanceled ?? this.isCanceled,
+      canceledAt: canceledAt ?? this.canceledAt,
     );
   }
 }

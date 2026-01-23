@@ -27,4 +27,22 @@ class SubscriptionStore {
     final box = await _box();
     await box.put(sub.id, sub);
   }
+
+  Future<Subscription?> getById(String id) async {
+    final box = await _box();
+    return box.get(id);
+  }
+
+  Future<void> cancel(String id) async {
+    final box = await _box();
+    final existing = box.get(id);
+    if (existing == null) return;
+
+    final updated = existing.copyWith(
+      isCanceled: true,
+      canceledAt: DateTime.now(),
+    );
+
+    await box.put(id, updated);
+  }
 }
