@@ -5,7 +5,9 @@ import '../data/subscription.dart';
 import '../data/subscription_store.dart';
 
 class AddSubscriptionSheet extends StatefulWidget {
-  const AddSubscriptionSheet({super.key});
+  final Subscription? initial;
+
+  const AddSubscriptionSheet({super.key, this.initial});
 
   @override
   State<AddSubscriptionSheet> createState() => _AddSubscriptionSheetState();
@@ -31,6 +33,29 @@ class _AddSubscriptionSheetState extends State<AddSubscriptionSheet> {
   int _reminderDaysBefore = 1;
 
   final _df = DateFormat('yyyy-MM-dd');
+
+  @override
+  void initState() {
+    super.initState();
+
+    final s = widget.initial;
+    if (s != null) {
+      _nameCtrl.text = s.name;
+      _priceCtrl.text = s.price.toString();
+      _cardCtrl.text = s.paymentCardLabel;
+
+      _currency = s.currency;
+      _renewalDate = s.renewalDate;
+
+      _hasTrial = s.hasFreeTrial;
+      _trialEnds = s.freeTrialEnds;
+
+      _usagePerWeek = s.usagePerWeek;
+
+      _remindersEnabled = s.remindersEnabled;
+      _reminderDaysBefore = s.reminderDaysBefore == 0 ? 1 : s.reminderDaysBefore;
+    }
+  }
 
   @override
   void dispose() {
@@ -65,9 +90,10 @@ class _AddSubscriptionSheetState extends State<AddSubscriptionSheet> {
     }
 
     final price = double.parse(_priceCtrl.text.replaceAll(',', '.'));
+    final existing = widget.initial;
 
     final sub = Subscription(
-      id: const Uuid().v4(),
+      id: existing?.id ?? const Uuid().v4(), // keep same id when editing
       name: _nameCtrl.text.trim(),
       price: price,
       currency: _currency,
@@ -80,10 +106,11 @@ class _AddSubscriptionSheetState extends State<AddSubscriptionSheet> {
       reminderDaysBefore: _remindersEnabled ? _reminderDaysBefore : 0,
     );
 
-    await _store.add(sub);
+    // Use upsert (put) so edit updates instead of creating a new record
+    await _store.upsert(sub);
 
     if (!mounted) return;
-    Navigator.pop(context, true); // notify created
+    Navigator.pop(context, true);
   }
 
   @override
@@ -106,10 +133,10 @@ class _AddSubscriptionSheetState extends State<AddSubscriptionSheet> {
               children: [
                 Row(
                   children: [
-                    const Expanded(
+                    Expanded(
                       child: Text(
-                        'Add subscription',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                        widget.initial == null ? 'Add subscription' : 'Edit subscription',
+                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
                       ),
                     ),
                     IconButton(
@@ -119,7 +146,6 @@ class _AddSubscriptionSheetState extends State<AddSubscriptionSheet> {
                   ],
                 ),
                 const SizedBox(height: 12),
-
                 Form(
                   key: _formKey,
                   child: Column(
@@ -134,14 +160,12 @@ class _AddSubscriptionSheetState extends State<AddSubscriptionSheet> {
                             (v == null || v.trim().isEmpty) ? 'Required' : null,
                       ),
                       const SizedBox(height: 12),
-
                       Row(
                         children: [
                           Expanded(
                             child: TextFormField(
                               controller: _priceCtrl,
-                              keyboardType:
-                                  const TextInputType.numberWithOptions(decimal: true),
+                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
                               decoration: const InputDecoration(
                                 labelText: 'Price',
                                 border: OutlineInputBorder(),
@@ -174,7 +198,6 @@ class _AddSubscriptionSheetState extends State<AddSubscriptionSheet> {
                         ],
                       ),
                       const SizedBox(height: 12),
-
                       ListTile(
                         contentPadding: EdgeInsets.zero,
                         title: const Text('Renewal date'),
@@ -185,7 +208,6 @@ class _AddSubscriptionSheetState extends State<AddSubscriptionSheet> {
                           onPicked: (d) => setState(() => _renewalDate = d),
                         ),
                       ),
-
                       SwitchListTile(
                         contentPadding: EdgeInsets.zero,
                         title: const Text('Free trial'),
@@ -197,23 +219,20 @@ class _AddSubscriptionSheetState extends State<AddSubscriptionSheet> {
                           });
                         },
                       ),
-
                       if (_hasTrial)
                         ListTile(
                           contentPadding: EdgeInsets.zero,
                           title: const Text('Trial ends'),
-                          subtitle: Text(_trialEnds == null
-                              ? 'Not set'
-                              : _df.format(_trialEnds!)),
+                          subtitle: Text(
+                            _trialEnds == null ? 'Not set' : _df.format(_trialEnds!),
+                          ),
                           trailing: const Icon(Icons.calendar_month),
                           onTap: () => _pickDate(
                             initial: _trialEnds ?? DateTime.now(),
                             onPicked: (d) => setState(() => _trialEnds = d),
                           ),
                         ),
-
                       const SizedBox(height: 12),
-
                       TextFormField(
                         controller: _cardCtrl,
                         decoration: const InputDecoration(
@@ -224,7 +243,6 @@ class _AddSubscriptionSheetState extends State<AddSubscriptionSheet> {
                         validator: (v) =>
                             (v == null || v.trim().isEmpty) ? 'Required' : null,
                       ),
-
                       const SizedBox(height: 16),
                       Align(
                         alignment: Alignment.centerLeft,
@@ -241,7 +259,6 @@ class _AddSubscriptionSheetState extends State<AddSubscriptionSheet> {
                         label: '$_usagePerWeek',
                         onChanged: (v) => setState(() => _usagePerWeek = v.toInt()),
                       ),
-
                       const SizedBox(height: 12),
                       SwitchListTile(
                         contentPadding: EdgeInsets.zero,
@@ -250,7 +267,6 @@ class _AddSubscriptionSheetState extends State<AddSubscriptionSheet> {
                         value: _remindersEnabled,
                         onChanged: (v) => setState(() => _remindersEnabled = v),
                       ),
-
                       if (_remindersEnabled)
                         DropdownButtonFormField<int>(
                           value: _reminderDaysBefore,
@@ -264,14 +280,12 @@ class _AddSubscriptionSheetState extends State<AddSubscriptionSheet> {
                             DropdownMenuItem(value: 7, child: Text('7 days')),
                             DropdownMenuItem(value: 14, child: Text('14 days')),
                           ],
-                          onChanged: (v) =>
-                              setState(() => _reminderDaysBefore = v ?? 1),
+                          onChanged: (v) => setState(() => _reminderDaysBefore = v ?? 1),
                         ),
-
                       const SizedBox(height: 20),
                       FilledButton(
                         onPressed: _save,
-                        child: const Text('Save'),
+                        child: Text(widget.initial == null ? 'Save' : 'Update'),
                       ),
                       const SizedBox(height: 8),
                     ],

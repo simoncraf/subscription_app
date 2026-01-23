@@ -4,6 +4,8 @@ import '../data/subscription_store.dart';
 import 'add_subscription_sheet.dart';
 import 'package:intl/intl.dart';
 
+import 'subscription_details_page.dart';
+
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
@@ -40,6 +42,20 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  Map<String, double> _calculateTotals(List<Subscription> subs) {
+    final Map<String, double> totals = {};
+
+    for (final s in subs) {
+      totals.update(
+        s.currency,
+        (value) => value + s.price,
+        ifAbsent: () => s.price,
+      );
+    }
+
+    return totals;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -66,56 +82,98 @@ class _HomePageState extends State<HomePage> {
 
           final df = DateFormat('yyyy-MM-dd');
 
-          return ListView.separated(
+          final totals = _calculateTotals(subs);
+
+          return ListView(
             padding: const EdgeInsets.all(12),
-            itemCount: subs.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 8),
-            itemBuilder: (context, i) {
-              final s = subs[i];
-              return Dismissible(
-                key: ValueKey(s.id),
-                background: Container(
-                  alignment: Alignment.centerRight,
-                  padding: const EdgeInsets.only(right: 16),
-                  child: const Icon(Icons.delete),
-                ),
-                direction: DismissDirection.endToStart,
-                confirmDismiss: (_) async {
-                  return await showDialog<bool>(
-                        context: context,
-                        builder: (_) => AlertDialog(
-                          title: const Text('Delete subscription?'),
-                          content: Text('Delete "${s.name}"?'),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.pop(context, false),
-                              child: const Text('Cancel'),
-                            ),
-                            TextButton(
-                              onPressed: () => Navigator.pop(context, true),
-                              child: const Text('Delete'),
-                            ),
-                          ],
+            children: [
+              // --- TOTAL CARD ---
+              Card(
+                elevation: 0,
+                color: Theme.of(context).colorScheme.surfaceVariant,
+                child: Padding(
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Total subscriptions',
+                        style: TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                      const SizedBox(height: 8),
+                      for (final entry in totals.entries)
+                        Text(
+                          '${entry.value.toStringAsFixed(2)} ${entry.key}',
+                          style: const TextStyle(fontSize: 16),
                         ),
-                      ) ??
-                      false;
-                },
-                onDismissed: (_) async {
-                  await _store.delete(s.id);
-                  await _refresh();
-                },
-                child: Card(
-                  child: ListTile(
-                    title: Text(s.name),
-                    subtitle: Text(
-                      '${s.price.toStringAsFixed(2)} ${s.currency} • renews ${df.format(s.renewalDate)}'
-                      '${s.hasFreeTrial && s.freeTrialEnds != null ? '\nTrial ends ${df.format(s.freeTrialEnds!)}' : ''}',
-                    ),
-                    trailing: Text('${s.usagePerWeek}/wk'),
+                    ],
                   ),
                 ),
-              );
-            },
+              ),
+
+              const SizedBox(height: 12),
+
+              // --- SUBSCRIPTION LIST ---
+              ...subs.map(
+                (s) => Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Dismissible(
+                    key: ValueKey(s.id),
+                    direction: DismissDirection.endToStart,
+                    background: Container(
+                      alignment: Alignment.centerRight,
+                      padding: const EdgeInsets.only(right: 16),
+                      child: const Icon(Icons.delete),
+                    ),
+                    confirmDismiss: (_) async {
+                      return await showDialog<bool>(
+                            context: context,
+                            builder: (_) => AlertDialog(
+                              title: const Text('Delete subscription?'),
+                              content: Text('Delete "${s.name}"?'),
+                              actions: [
+                                TextButton(
+                                  onPressed: () =>
+                                      Navigator.pop(context, false),
+                                  child: const Text('Cancel'),
+                                ),
+                                TextButton(
+                                  onPressed: () => Navigator.pop(context, true),
+                                  child: const Text('Delete'),
+                                ),
+                              ],
+                            ),
+                          ) ??
+                          false;
+                    },
+                    onDismissed: (_) async {
+                      await _store.delete(s.id);
+                      await _refresh();
+                    },
+                    child: Card(
+                      child: ListTile(
+                        title: Text(s.name),
+                        subtitle: Text(
+                          '${s.price.toStringAsFixed(2)} ${s.currency}',
+                        ),
+                        trailing: Text('${s.usagePerWeek}/wk'),
+                        onTap: () async {
+                          await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) =>
+                                  SubscriptionDetailsPage(subscriptionId: s.id),
+                            ),
+                          );
+                          await _refresh();
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           );
         },
       ),

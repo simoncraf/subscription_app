@@ -22,4 +22,9 @@ class SubscriptionStore {
     final box = await _box();
     await box.delete(id);
   }
+
+  Future<void> upsert(Subscription sub) async {
+    final box = await _box();
+    await box.put(sub.id, sub);
+  }
 }
