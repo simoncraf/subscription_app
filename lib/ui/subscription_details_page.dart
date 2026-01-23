@@ -10,7 +10,8 @@ class SubscriptionDetailsPage extends StatefulWidget {
   const SubscriptionDetailsPage({super.key, required this.subscriptionId});
 
   @override
-  State<SubscriptionDetailsPage> createState() => _SubscriptionDetailsPageState();
+  State<SubscriptionDetailsPage> createState() =>
+      _SubscriptionDetailsPageState();
 }
 
 class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage> {
@@ -94,6 +95,36 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage> {
     Navigator.pop(context, true); // back to home to refresh lists
   }
 
+  Future<void> _deletePermanently(Subscription s) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Delete permanently?'),
+        content: Text(
+          'This will permanently remove "${s.name}" from your phone, including History.\n\n'
+          'If you only want to stop tracking it, use "Cancel subscription" instead.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Keep'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete permanently'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    await _store.delete(s.id);
+
+    if (!mounted) return;
+    Navigator.pop(context, true); // return to list so it refreshes
+  }
+
   Widget _row(String label, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
@@ -102,7 +133,8 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage> {
         children: [
           SizedBox(
             width: 140,
-            child: Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
+            child: Text(label,
+                style: const TextStyle(fontWeight: FontWeight.w600)),
           ),
           Expanded(child: Text(value)),
         ],
@@ -121,13 +153,17 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage> {
             builder: (context, snapshot) {
               final sub = snapshot.data;
               if (sub == null) return const SizedBox.shrink();
-              if (sub.isCanceled) return const SizedBox.shrink(); // hide edit when canceled
+
               return PopupMenuButton<String>(
                 onSelected: (v) {
                   if (v == 'edit') _edit(sub);
+                  if (v == 'delete') _deletePermanently(sub);
                 },
-                itemBuilder: (_) => const [
-                  PopupMenuItem(value: 'edit', child: Text('Edit')),
+                itemBuilder: (_) => [
+                  if (!sub.isCanceled)
+                    const PopupMenuItem(value: 'edit', child: Text('Edit')),
+                  const PopupMenuItem(
+                      value: 'delete', child: Text('Delete permanently')),
                 ],
               );
             },
@@ -146,22 +182,22 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage> {
             return const Center(child: Text('Subscription not found.'));
           }
 
-          final costPerUse = (s.usagePerWeek <= 0) ? null : (s.price / s.usagePerWeek);
+          final costPerUse =
+              (s.usagePerWeek <= 0) ? null : (s.price / s.usagePerWeek);
 
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
               Text(
                 s.name,
-                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
+                style:
+                    const TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: 12),
               const Divider(),
-
               _row('Status', s.isCanceled ? 'Canceled' : 'Active'),
               if (s.isCanceled && s.canceledAt != null)
                 _row('Canceled at', _df.format(s.canceledAt!)),
-
               _row('Price', '${s.price.toStringAsFixed(2)} ${s.currency}'),
               _row('Renewal date', _df.format(s.renewalDate)),
               _row('Free trial', s.hasFreeTrial ? 'Yes' : 'No'),
@@ -178,9 +214,7 @@ class _SubscriptionDetailsPageState extends State<SubscriptionDetailsPage> {
               _row('Reminders', s.remindersEnabled ? 'Enabled' : 'Disabled'),
               if (s.remindersEnabled)
                 _row('Reminder', '${s.reminderDaysBefore} day(s) before'),
-
               const SizedBox(height: 32),
-
               if (!s.isCanceled)
                 FilledButton.tonal(
                   style: FilledButton.styleFrom(
