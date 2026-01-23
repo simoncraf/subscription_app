@@ -3,10 +3,18 @@ import 'package:intl/intl.dart';
 
 import '../data/subscription.dart';
 import '../data/subscription_store.dart';
+import '../data/settings_store.dart';
 import 'add_subscription_sheet.dart';
 import 'settings_page.dart';
 import 'statistics_page.dart';
 import 'subscription_details_page.dart';
+
+class _HomeData {
+  final List<Subscription> subs;
+  final AppSettings settings;
+
+  const _HomeData(this.subs, this.settings);
+}
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -17,17 +25,31 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   final _store = SubscriptionStore();
-  late Future<List<Subscription>> _subsFuture;
+  final _settingsStore = SettingsStore();
+
+  late Future<_HomeData> _dataFuture;
 
   @override
   void initState() {
     super.initState();
-    _subsFuture = _store.getAll();
+    _dataFuture = _loadData();
+  }
+
+  Future<_HomeData> _loadData() async {
+    final results = await Future.wait<dynamic>([
+      _store.getAll(),
+      _settingsStore.get(),
+    ]);
+
+    return _HomeData(
+      results[0] as List<Subscription>,
+      results[1] as AppSettings,
+    );
   }
 
   Future<void> _refresh() async {
     setState(() {
-      _subsFuture = _store.getAll();
+      _dataFuture = _loadData();
     });
   }
 
@@ -44,18 +66,19 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  /// Returns a "monthly equivalent" total per currency:
-  /// - monthly subscriptions: price
-  /// - annual subscriptions: price / 12
-  Map<String, double> _calculateMonthlyTotals(List<Subscription> subs) {
+  Map<String, double> _calculateTotals(List<Subscription> subs, String mode) {
+    // mode: 'monthly' or 'annual'
     final totals = <String, double>{};
 
     for (final s in subs) {
       final cur = s.currency;
-      final rec = (s.recurrence ?? 'monthly'); // null => monthly (old data)
-      final monthlyValue = (rec == 'annual') ? (s.price / 12.0) : s.price;
+      final rec = (s.recurrence ?? 'monthly'); // old data fallback
 
-      totals.update(cur, (v) => v + monthlyValue, ifAbsent: () => monthlyValue);
+      final value = (mode == 'annual')
+          ? (rec == 'annual' ? s.price : (s.price * 12.0))
+          : (rec == 'annual' ? (s.price / 12.0) : s.price);
+
+      totals.update(cur, (v) => v + value, ifAbsent: () => value);
     }
 
     return totals;
@@ -114,6 +137,29 @@ class _HomePageState extends State<HomePage> {
     return result ?? false;
   }
 
+  String _recurrenceLabel(Subscription s) {
+    final rec = (s.recurrence ?? 'monthly');
+    return rec == 'annual' ? 'annual' : 'monthly';
+  }
+
+  String _buildLeftSubtitle(Subscription s, AppSettings st, DateFormat df) {
+    final parts = <String>[];
+
+    if (st.showPrice) {
+      parts.add('${s.price.toStringAsFixed(2)} ${s.currency}');
+    }
+    if (st.showRecurrence) {
+      parts.add(_recurrenceLabel(s));
+    }
+    if (st.showRenewalDate) {
+      parts.add('renews ${df.format(s.renewalDate)}');
+    }
+
+    // If user hides everything, keep a minimal line to avoid an empty subtitle.
+    if (parts.isEmpty) return ' ';
+    return parts.join(' • ');
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -148,14 +194,20 @@ class _HomePageState extends State<HomePage> {
         onPressed: _openAddSheet,
         child: const Icon(Icons.add),
       ),
-      body: FutureBuilder<List<Subscription>>(
-        future: _subsFuture,
+      body: FutureBuilder<_HomeData>(
+        future: _dataFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState != ConnectionState.done) {
             return const Center(child: CircularProgressIndicator());
           }
 
-          final subs = snapshot.data ?? const <Subscription>[];
+          final data = snapshot.data;
+          if (data == null) {
+            return const Center(child: Text('Failed to load data.'));
+          }
+
+          final subs = data.subs;
+          final st = data.settings;
 
           if (subs.isEmpty) {
             return const Center(
@@ -169,8 +221,10 @@ class _HomePageState extends State<HomePage> {
           final active = subs.where((s) => !s.isCanceled).toList();
           final canceled = subs.where((s) => s.isCanceled).toList();
 
-          // ✅ monthly equivalent totals (active only)
-          final monthlyTotals = _calculateMonthlyTotals(active);
+          // totals mode from settings
+          final totalsMode = st.homeTotalMode; // 'monthly' or 'annual'
+          final totals = _calculateTotals(active, totalsMode);
+          final currencies = totals.keys.toList()..sort();
 
           active.sort((a, b) => a.renewalDate.compareTo(b.renewalDate));
           canceled.sort((a, b) {
@@ -180,7 +234,7 @@ class _HomePageState extends State<HomePage> {
           });
 
           final df = DateFormat('yyyy-MM-dd');
-          final currencies = monthlyTotals.keys.toList()..sort();
+          final unitLabel = totalsMode == 'annual' ? '/ year' : '/ month';
 
           return ListView(
             padding: const EdgeInsets.all(12),
@@ -190,14 +244,13 @@ class _HomePageState extends State<HomePage> {
                 elevation: 0,
                 color: Theme.of(context).colorScheme.surfaceVariant,
                 child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Total (active)',
-                        style: TextStyle(fontWeight: FontWeight.w600),
+                      Text(
+                        'Total',
+                        style: const TextStyle(fontWeight: FontWeight.w600),
                       ),
                       const SizedBox(height: 8),
                       if (currencies.isEmpty)
@@ -205,7 +258,7 @@ class _HomePageState extends State<HomePage> {
                       else
                         for (final cur in currencies)
                           Text(
-                            '${(monthlyTotals[cur] ?? 0).toStringAsFixed(2)} $cur / month',
+                            '${(totals[cur] ?? 0).toStringAsFixed(2)} $cur $unitLabel',
                             style: const TextStyle(fontSize: 16),
                           ),
                     ],
@@ -221,8 +274,7 @@ class _HomePageState extends State<HomePage> {
                   const Expanded(
                     child: Text(
                       'Active',
-                      style:
-                          TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
                     ),
                   ),
                   Text('${active.length}'),
@@ -238,8 +290,7 @@ class _HomePageState extends State<HomePage> {
                 )
               else
                 ...active.map((s) {
-                  final rec = (s.recurrence ?? 'monthly');
-                  final recLabel = rec == 'annual' ? 'annual' : 'monthly';
+                  final leftSubtitle = _buildLeftSubtitle(s, st, df);
 
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 8),
@@ -273,17 +324,13 @@ class _HomePageState extends State<HomePage> {
                             await _refresh();
                           },
                           child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 12,
-                            ),
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                             child: Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
+                                    crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         s.name,
@@ -293,25 +340,26 @@ class _HomePageState extends State<HomePage> {
                                         ),
                                       ),
                                       const SizedBox(height: 4),
-                                      Text(
-                                        '${s.price.toStringAsFixed(2)} ${s.currency} • $recLabel • renews ${df.format(s.renewalDate)}',
-                                      ),
+                                      Text(leftSubtitle),
                                     ],
                                   ),
                                 ),
                                 const SizedBox(width: 12),
+
+                                // RIGHT SIDE (usage + badges) controlled by settings
                                 ConstrainedBox(
-                                  constraints:
-                                      const BoxConstraints(maxWidth: 160),
+                                  constraints: const BoxConstraints(maxWidth: 160),
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.end,
                                     children: [
-                                      Text('${s.usagePerWeek}/wk'),
-                                      const SizedBox(height: 6),
-                                      Align(
-                                        alignment: Alignment.centerRight,
-                                        child: _warningChips(s),
-                                      ),
+                                      if (st.showUsageFrequency) Text('${s.usagePerWeek}/wk'),
+                                      if (st.showBadges) ...[
+                                        const SizedBox(height: 6),
+                                        Align(
+                                          alignment: Alignment.centerRight,
+                                          child: _warningChips(s),
+                                        ),
+                                      ],
                                     ],
                                   ),
                                 ),
@@ -332,8 +380,7 @@ class _HomePageState extends State<HomePage> {
                   const Expanded(
                     child: Text(
                       'History',
-                      style:
-                          TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
                     ),
                   ),
                   Text('${canceled.length}'),
