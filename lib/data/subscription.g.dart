@@ -30,13 +30,14 @@ class SubscriptionAdapter extends TypeAdapter<Subscription> {
       reminderDaysBefore: fields[10] as int,
       isCanceled: fields[11] as bool,
       canceledAt: fields[12] as DateTime?,
+      recurrence: fields[13] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, Subscription obj) {
     writer
-      ..writeByte(13)
+      ..writeByte(14)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -62,7 +63,9 @@ class SubscriptionAdapter extends TypeAdapter<Subscription> {
       ..writeByte(11)
       ..write(obj.isCanceled)
       ..writeByte(12)
-      ..write(obj.canceledAt);
+      ..write(obj.canceledAt)
+      ..writeByte(13)
+      ..write(obj.recurrence);
   }
 
   @override

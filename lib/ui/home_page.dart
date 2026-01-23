@@ -42,15 +42,20 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  Map<String, double> _calculateTotals(List<Subscription> subs) {
-    final Map<String, double> totals = {};
+  /// Returns a "monthly equivalent" total per currency:
+  /// - monthly subscriptions: price
+  /// - annual subscriptions: price / 12
+  Map<String, double> _calculateMonthlyTotals(List<Subscription> subs) {
+    final totals = <String, double>{};
+
     for (final s in subs) {
-      totals.update(
-        s.currency,
-        (value) => value + s.price,
-        ifAbsent: () => s.price,
-      );
+      final cur = s.currency;
+      final rec = (s.recurrence ?? 'monthly'); // null => monthly (old data)
+      final monthlyValue = (rec == 'annual') ? (s.price / 12.0) : s.price;
+
+      totals.update(cur, (v) => v + monthlyValue, ifAbsent: () => monthlyValue);
     }
+
     return totals;
   }
 
@@ -135,7 +140,9 @@ class _HomePageState extends State<HomePage> {
 
           final active = subs.where((s) => !s.isCanceled).toList();
           final canceled = subs.where((s) => s.isCanceled).toList();
-          final totals = _calculateTotals(active);
+
+          // ✅ monthly equivalent totals (active only)
+          final monthlyTotals = _calculateMonthlyTotals(active);
 
           active.sort((a, b) => a.renewalDate.compareTo(b.renewalDate));
           canceled.sort((a, b) {
@@ -145,6 +152,7 @@ class _HomePageState extends State<HomePage> {
           });
 
           final df = DateFormat('yyyy-MM-dd');
+          final currencies = monthlyTotals.keys.toList()..sort();
 
           return ListView(
             padding: const EdgeInsets.all(12),
@@ -163,12 +171,12 @@ class _HomePageState extends State<HomePage> {
                         style: TextStyle(fontWeight: FontWeight.w600),
                       ),
                       const SizedBox(height: 8),
-                      if (totals.isEmpty)
+                      if (currencies.isEmpty)
                         const Text('No active subscriptions.')
                       else
-                        for (final entry in totals.entries)
+                        for (final cur in currencies)
                           Text(
-                            '${entry.value.toStringAsFixed(2)} ${entry.key}',
+                            '${(monthlyTotals[cur] ?? 0).toStringAsFixed(2)} $cur / month',
                             style: const TextStyle(fontSize: 16),
                           ),
                     ],
@@ -200,6 +208,9 @@ class _HomePageState extends State<HomePage> {
                 )
               else
                 ...active.map((s) {
+                  final rec = (s.recurrence ?? 'monthly');
+                  final recLabel = rec == 'annual' ? 'annual' : 'monthly';
+
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 8),
                     child: Dismissible(
@@ -216,7 +227,7 @@ class _HomePageState extends State<HomePage> {
                         await _refresh();
                       },
 
-                      // ✅ OVERFLOW FIX: replace ListTile with custom layout
+                      // overflow-safe layout
                       child: Card(
                         child: InkWell(
                           borderRadius: BorderRadius.circular(12),
@@ -239,7 +250,6 @@ class _HomePageState extends State<HomePage> {
                             child: Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                // LEFT
                                 Expanded(
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -253,14 +263,12 @@ class _HomePageState extends State<HomePage> {
                                       ),
                                       const SizedBox(height: 4),
                                       Text(
-                                        '${s.price.toStringAsFixed(2)} ${s.currency} • renews ${df.format(s.renewalDate)}',
+                                        '${s.price.toStringAsFixed(2)} ${s.currency} • $recLabel • renews ${df.format(s.renewalDate)}',
                                       ),
                                     ],
                                   ),
                                 ),
                                 const SizedBox(width: 12),
-
-                                // RIGHT
                                 ConstrainedBox(
                                   constraints: const BoxConstraints(maxWidth: 160),
                                   child: Column(

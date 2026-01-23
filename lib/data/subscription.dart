@@ -43,6 +43,12 @@ class Subscription extends HiveObject {
   @HiveField(12)
   final DateTime? canceledAt;
 
+  @HiveField(13)
+  final String?
+      recurrence; // 'monthly' or 'annual' (null => monthly for old data)
+
+  String get recurrenceEffective => recurrence ?? 'monthly';
+
   Subscription({
     required this.id,
     required this.name,
@@ -57,6 +63,7 @@ class Subscription extends HiveObject {
     required this.reminderDaysBefore,
     required this.isCanceled,
     required this.canceledAt,
+    required this.recurrence,
   });
 
   Subscription copyWith({
@@ -73,6 +80,7 @@ class Subscription extends HiveObject {
     int? reminderDaysBefore,
     bool? isCanceled,
     DateTime? canceledAt,
+    String? recurrence,
   }) {
     return Subscription(
       id: id ?? this.id,
@@ -88,6 +96,7 @@ class Subscription extends HiveObject {
       reminderDaysBefore: reminderDaysBefore ?? this.reminderDaysBefore,
       isCanceled: isCanceled ?? this.isCanceled,
       canceledAt: canceledAt ?? this.canceledAt,
+      recurrence: recurrence ?? this.recurrence,
     );
   }
 }
