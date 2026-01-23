@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 import '../data/subscription.dart';
 import '../data/subscription_store.dart';
+import '../data/payment_card_store.dart';
 
 class AddSubscriptionSheet extends StatefulWidget {
   final Subscription? initial;
@@ -19,10 +20,18 @@ class _AddSubscriptionSheetState extends State<AddSubscriptionSheet> {
 
   final _nameCtrl = TextEditingController();
   final _priceCtrl = TextEditingController();
-  final _cardCtrl = TextEditingController(text: 'Default card');
+
+  // Keep as backing value for saving (string stored in Subscription)
+  final _cardCtrl = TextEditingController();
+  final _cardStore = PaymentCardStore();
+
+  List<String> _cards = const [];
+  String? _selectedCard;
+
+  static const String _addNewCardValue = '__add_new_card__';
 
   String _currency = 'EUR';
-  String _recurrence = 'monthly'; // ✅ NEW: monthly (default) or annual
+  String _recurrence = 'monthly'; // monthly (default) or annual
 
   DateTime _renewalDate = DateTime.now().add(const Duration(days: 30));
 
@@ -44,7 +53,6 @@ class _AddSubscriptionSheetState extends State<AddSubscriptionSheet> {
     if (s != null) {
       _nameCtrl.text = s.name;
       _priceCtrl.text = s.price.toString();
-      _cardCtrl.text = s.paymentCardLabel;
 
       _currency = s.currency;
       _renewalDate = s.renewalDate;
@@ -57,9 +65,38 @@ class _AddSubscriptionSheetState extends State<AddSubscriptionSheet> {
       _remindersEnabled = s.remindersEnabled;
       _reminderDaysBefore = s.reminderDaysBefore == 0 ? 1 : s.reminderDaysBefore;
 
-      // ✅ NEW: load recurrence (null => monthly for old data)
       _recurrence = s.recurrence ?? 'monthly';
+
+      // prefill backing value (may or may not be stored in cards box yet)
+      _cardCtrl.text = s.paymentCardLabel;
+      _selectedCard = s.paymentCardLabel.trim().isEmpty ? null : s.paymentCardLabel.trim();
     }
+
+    // Load cards from storage and align selection
+    Future.microtask(() async {
+      final existingLabel = widget.initial?.paymentCardLabel.trim();
+
+      // If editing and the card label isn't saved yet, add it so it appears.
+      if (existingLabel != null && existingLabel.isNotEmpty) {
+        await _cardStore.add(existingLabel);
+      }
+
+      final refreshed = await _cardStore.getAll();
+
+      if (!mounted) return;
+      setState(() {
+        _cards = refreshed;
+
+        if (existingLabel != null && existingLabel.isNotEmpty) {
+          _selectedCard = existingLabel;
+          _cardCtrl.text = existingLabel;
+        } else {
+          // no default card; user must select/add
+          _selectedCard = null;
+          _cardCtrl.text = '';
+        }
+      });
+    });
   }
 
   @override
@@ -68,6 +105,51 @@ class _AddSubscriptionSheetState extends State<AddSubscriptionSheet> {
     _priceCtrl.dispose();
     _cardCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _promptAddNewCard() async {
+    final ctrl = TextEditingController();
+
+    final name = await showDialog<String?>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Add a new card'),
+        content: TextField(
+          controller: ctrl,
+          autofocus: true,
+          decoration: const InputDecoration(
+            labelText: 'Card name',
+            hintText: 'e.g. Revolut, Visa **** 1234',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, null),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, ctrl.text),
+            child: const Text('Add'),
+          ),
+        ],
+      ),
+    );
+
+    final trimmed = (name ?? '').trim();
+    if (trimmed.isEmpty) return;
+
+    await _cardStore.add(trimmed);
+    final cards = await _cardStore.getAll();
+
+    if (!mounted) return;
+    setState(() {
+      _cards = cards;
+      _selectedCard = trimmed;
+      _cardCtrl.text = trimmed;
+    });
+
+    // Optional: revalidate card field immediately after adding
+    _formKey.currentState?.validate();
   }
 
   Future<void> _pickDate({
@@ -102,6 +184,7 @@ class _AddSubscriptionSheetState extends State<AddSubscriptionSheet> {
       name: _nameCtrl.text.trim(),
       price: price,
       currency: _currency,
+      recurrence: _recurrence,
       renewalDate: _renewalDate,
       hasFreeTrial: _hasTrial,
       freeTrialEnds: _hasTrial ? _trialEnds : null,
@@ -111,9 +194,6 @@ class _AddSubscriptionSheetState extends State<AddSubscriptionSheet> {
       reminderDaysBefore: _remindersEnabled ? _reminderDaysBefore : 0,
       isCanceled: existing?.isCanceled ?? false,
       canceledAt: existing?.canceledAt,
-
-      // ✅ NEW
-      recurrence: _recurrence,
     );
 
     await _store.upsert(sub);
@@ -165,8 +245,7 @@ class _AddSubscriptionSheetState extends State<AddSubscriptionSheet> {
                           labelText: 'Name',
                           border: OutlineInputBorder(),
                         ),
-                        validator: (v) =>
-                            (v == null || v.trim().isEmpty) ? 'Required' : null,
+                        validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
                       ),
                       const SizedBox(height: 12),
 
@@ -210,7 +289,6 @@ class _AddSubscriptionSheetState extends State<AddSubscriptionSheet> {
 
                       const SizedBox(height: 12),
 
-                      // ✅ NEW: Recurrence selector
                       DropdownButtonFormField<String>(
                         value: _recurrence,
                         decoration: const InputDecoration(
@@ -253,9 +331,7 @@ class _AddSubscriptionSheetState extends State<AddSubscriptionSheet> {
                         ListTile(
                           contentPadding: EdgeInsets.zero,
                           title: const Text('Trial ends'),
-                          subtitle: Text(
-                            _trialEnds == null ? 'Not set' : _df.format(_trialEnds!),
-                          ),
+                          subtitle: Text(_trialEnds == null ? 'Not set' : _df.format(_trialEnds!)),
                           trailing: const Icon(Icons.calendar_month),
                           onTap: () => _pickDate(
                             initial: _trialEnds ?? DateTime.now(),
@@ -265,15 +341,39 @@ class _AddSubscriptionSheetState extends State<AddSubscriptionSheet> {
 
                       const SizedBox(height: 12),
 
-                      TextFormField(
-                        controller: _cardCtrl,
+                      DropdownButtonFormField<String>(
+                        value: (_selectedCard != null && _cards.contains(_selectedCard))
+                            ? _selectedCard
+                            : null,
                         decoration: const InputDecoration(
-                          labelText: 'Payment card label',
-                          hintText: 'e.g. Revolut, Visa **** 1234',
+                          labelText: 'Payment card',
                           border: OutlineInputBorder(),
                         ),
-                        validator: (v) =>
-                            (v == null || v.trim().isEmpty) ? 'Required' : null,
+                        hint: const Text('Select a card'),
+                        items: [
+                          ..._cards.map((c) => DropdownMenuItem(value: c, child: Text(c))),
+                          const DropdownMenuItem(
+                            value: _addNewCardValue,
+                            child: Text('+ Add a new card…'),
+                          ),
+                        ],
+                        onChanged: (v) async {
+                          if (v == null) return;
+
+                          if (v == _addNewCardValue) {
+                            await _promptAddNewCard();
+                            return;
+                          }
+
+                          setState(() {
+                            _selectedCard = v;
+                            _cardCtrl.text = v;
+                          });
+                        },
+                        validator: (_) {
+                          if (_cardCtrl.text.trim().isEmpty) return 'Required';
+                          return null;
+                        },
                       ),
 
                       const SizedBox(height: 16),
