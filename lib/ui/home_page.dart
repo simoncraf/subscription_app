@@ -4,6 +4,8 @@ import 'package:intl/intl.dart';
 import '../data/subscription.dart';
 import '../data/subscription_store.dart';
 import 'add_subscription_sheet.dart';
+import 'settings_page.dart';
+import 'statistics_page.dart';
 import 'subscription_details_page.dart';
 
 class HomePage extends StatefulWidget {
@@ -115,7 +117,33 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Subscriptions')),
+      appBar: AppBar(
+        title: const Text('Subscriptions'),
+        actions: [
+          PopupMenuButton<String>(
+            onSelected: (v) async {
+              if (v == 'stats') {
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const StatisticsPage()),
+                );
+                await _refresh();
+              }
+              if (v == 'settings') {
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const SettingsPage()),
+                );
+                await _refresh();
+              }
+            },
+            itemBuilder: (_) => const [
+              PopupMenuItem(value: 'stats', child: Text('Statistics')),
+              PopupMenuItem(value: 'settings', child: Text('Settings')),
+            ],
+          ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: _openAddSheet,
         child: const Icon(Icons.add),
@@ -162,7 +190,8 @@ class _HomePageState extends State<HomePage> {
                 elevation: 0,
                 color: Theme.of(context).colorScheme.surfaceVariant,
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -192,7 +221,8 @@ class _HomePageState extends State<HomePage> {
                   const Expanded(
                     child: Text(
                       'Active',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                      style:
+                          TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
                     ),
                   ),
                   Text('${active.length}'),
@@ -252,7 +282,8 @@ class _HomePageState extends State<HomePage> {
                               children: [
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         s.name,
@@ -270,7 +301,8 @@ class _HomePageState extends State<HomePage> {
                                 ),
                                 const SizedBox(width: 12),
                                 ConstrainedBox(
-                                  constraints: const BoxConstraints(maxWidth: 160),
+                                  constraints:
+                                      const BoxConstraints(maxWidth: 160),
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.end,
                                     children: [
@@ -300,7 +332,8 @@ class _HomePageState extends State<HomePage> {
                   const Expanded(
                     child: Text(
                       'History',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                      style:
+                          TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
                     ),
                   ),
                   Text('${canceled.length}'),
