@@ -69,13 +69,13 @@ class _HomePageState extends State<HomePage> {
   String _nextMonthLabel() {
     final now = DateTime.now();
     final nextMonth = DateTime(now.year, now.month + 1, 1);
-    return DateFormat('MMMM').format(nextMonth).toUpperCase(); // e.g. FEBRUARY
+    return DateFormat('MMMM').format(nextMonth).toUpperCase();
   }
 
   String _currentMonthLabel() {
     final now = DateTime.now();
     final curMonth = DateTime(now.year, now.month, 1);
-    return DateFormat('MMMM').format(curMonth).toUpperCase(); // e.g. JANUARY
+    return DateFormat('MMMM').format(curMonth).toUpperCase();
   }
 
   List<String> _activeCurrencies(List<Subscription> active) {
@@ -92,23 +92,15 @@ class _HomePageState extends State<HomePage> {
 
     final now = DateTime.now();
     final startNextMonth = DateTime(now.year, now.month + 1, 1);
-    final endWindow = DateTime(now.year, now.month + 13, 1); // +12 full months
+    final endWindow = DateTime(now.year, now.month + 13, 1);
 
     bool inNextYear(DateTime d) {
       return !d.isBefore(startNextMonth) && d.isBefore(endWindow);
     }
 
     for (final s in subs) {
-      final cur = s.currency;
-
-      // If the next renewal is within the next 12 months, include it
       if (!inNextYear(s.renewalDate)) continue;
-
-      totals.update(
-        cur,
-        (v) => v + s.price,
-        ifAbsent: () => s.price,
-      );
+      totals.update(s.currency, (v) => v + s.price, ifAbsent: () => s.price);
     }
 
     return totals;
@@ -127,12 +119,7 @@ class _HomePageState extends State<HomePage> {
 
     for (final s in subs) {
       if (!inNextMonth(s.renewalDate)) continue;
-
-      totals.update(
-        s.currency,
-        (v) => v + s.price,
-        ifAbsent: () => s.price,
-      );
+      totals.update(s.currency, (v) => v + s.price, ifAbsent: () => s.price);
     }
 
     return totals;
@@ -153,12 +140,7 @@ class _HomePageState extends State<HomePage> {
 
     for (final s in subs) {
       if (!inRemainingThisMonth(s.renewalDate)) continue;
-
-      totals.update(
-        s.currency,
-        (v) => v + s.price,
-        ifAbsent: () => s.price,
-      );
+      totals.update(s.currency, (v) => v + s.price, ifAbsent: () => s.price);
     }
 
     return totals;
@@ -235,7 +217,6 @@ class _HomePageState extends State<HomePage> {
       parts.add('renews ${df.format(s.renewalDate)}');
     }
 
-    // If user hides everything, keep a minimal line to avoid an empty subtitle.
     if (parts.isEmpty) return ' ';
     return parts.join(' • ');
   }
@@ -245,35 +226,38 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Subscriptions'),
+        centerTitle: true,
+        leading: IconButton(
+          tooltip: 'Settings',
+          icon: const Icon(Icons.settings),
+          onPressed: () async {
+            await Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const SettingsPage()),
+            );
+            await _refresh();
+          },
+        ),
         actions: [
-          PopupMenuButton<String>(
-            onSelected: (v) async {
-              if (v == 'stats') {
-                await Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const StatisticsPage()),
-                );
-                await _refresh();
-              }
-              if (v == 'settings') {
-                await Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const SettingsPage()),
-                );
-                await _refresh();
-              }
+          IconButton(
+            tooltip: 'Statistics',
+            icon: const Icon(Icons.bar_chart_rounded),
+            onPressed: () async {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const StatisticsPage()),
+              );
+              await _refresh();
             },
-            itemBuilder: (_) => const [
-              PopupMenuItem(value: 'stats', child: Text('Statistics')),
-              PopupMenuItem(value: 'settings', child: Text('Settings')),
-            ],
           ),
         ],
       ),
+
       floatingActionButton: FloatingActionButton(
         onPressed: _openAddSheet,
         child: const Icon(Icons.add),
       ),
+
       body: FutureBuilder<_HomeData>(
         future: _dataFuture,
         builder: (context, snapshot) {
@@ -301,7 +285,6 @@ class _HomePageState extends State<HomePage> {
           final active = subs.where((s) => !s.isCanceled).toList();
           final canceled = subs.where((s) => s.isCanceled).toList();
 
-          // totals mode from settings
           final totalsMode = st.homeTotalMode; // 'monthly' or 'annual'
           final monthlyView = st.monthlyTotalView; // 'next' or 'current'
 
@@ -330,7 +313,6 @@ class _HomePageState extends State<HomePage> {
           return ListView(
             padding: const EdgeInsets.all(12),
             children: [
-              // --- TOTAL CARD (ACTIVE ONLY) ---
               Card(
                 elevation: 0,
                 color: Theme.of(context).colorScheme.surfaceVariant,
@@ -345,12 +327,9 @@ class _HomePageState extends State<HomePage> {
                         style: const TextStyle(fontWeight: FontWeight.w600),
                       ),
                       const SizedBox(height: 8),
-
-                      // Always show 0.00 <currency> for currencies present in active subscriptions.
                       if (currencies.isEmpty)
-                        // No active subscriptions at all — show one line in default currency from settings.
                         Text(
-                          '0.00 ${st.defaultCurrency} ${totalsMode == "annual" ? "/ next 12 months" : "/ next month"}',
+                          '0.00 ${st.defaultCurrency}',
                           style: const TextStyle(fontSize: 16),
                         )
                       else
@@ -363,10 +342,8 @@ class _HomePageState extends State<HomePage> {
                   ),
                 ),
               ),
-
               const SizedBox(height: 12),
 
-              // --- ACTIVE LIST HEADER ---
               Row(
                 children: [
                   const Expanded(
@@ -381,7 +358,6 @@ class _HomePageState extends State<HomePage> {
               ),
               const SizedBox(height: 8),
 
-              // --- ACTIVE LIST (SWIPE TO CANCEL) ---
               if (active.isEmpty)
                 const Padding(
                   padding: EdgeInsets.symmetric(vertical: 12),
@@ -406,8 +382,6 @@ class _HomePageState extends State<HomePage> {
                         await _store.cancel(s.id);
                         await _refresh();
                       },
-
-                      // overflow-safe layout
                       child: Card(
                         child: InkWell(
                           borderRadius: BorderRadius.circular(12),
@@ -446,8 +420,6 @@ class _HomePageState extends State<HomePage> {
                                   ),
                                 ),
                                 const SizedBox(width: 12),
-
-                                // RIGHT SIDE (usage + badges) controlled by settings
                                 ConstrainedBox(
                                   constraints:
                                       const BoxConstraints(maxWidth: 160),
@@ -477,7 +449,6 @@ class _HomePageState extends State<HomePage> {
 
               const SizedBox(height: 16),
 
-              // --- HISTORY SECTION ---
               Row(
                 children: [
                   const Expanded(
