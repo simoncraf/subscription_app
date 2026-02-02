@@ -55,7 +55,12 @@ Map<String, double> calculateNextMonthTotals(List<Subscription> subs) {
   }
 
   for (final s in subs) {
-    if (!inNextMonth(s.renewalDate)) continue;
+    if (s.recurrenceEffective == 'annual') {
+      if (!inNextMonth(s.renewalDate)) continue;
+    } else {
+      // Monthly subscriptions are billed every month after their start date.
+      if (!s.renewalDate.isBefore(startMonthAfter)) continue;
+    }
     totals.update(s.currency, (v) => v + s.price, ifAbsent: () => s.price);
   }
 
