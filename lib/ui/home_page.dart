@@ -35,7 +35,7 @@ class _HomePageState extends State<HomePage> {
 
   Future<HomeData> _loadData() async {
     final results = await Future.wait<dynamic>([
-      _store.getAll(),
+      _store.getAllNormalized(),
       _settingsStore.get(),
     ]);
 

@@ -35,7 +35,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
 
   Future<_StatsData> _load() async {
     final results = await Future.wait<dynamic>([
-      _subsStore.getAll(),
+      _subsStore.getAllNormalized(),
       _settingsStore.get(),
     ]);
 
