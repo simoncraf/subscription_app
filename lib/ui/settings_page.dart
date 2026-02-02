@@ -91,7 +91,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
                 // Language
                 DropdownButtonFormField<String>(
-                  value: s.language,
+                  initialValue: s.language,
                   decoration: const InputDecoration(
                     labelText: 'Language',
                     border: OutlineInputBorder(),
@@ -109,7 +109,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
                 // Default currency
                 DropdownButtonFormField<String>(
-                  value: s.defaultCurrency,
+                  initialValue: s.defaultCurrency,
                   decoration: const InputDecoration(
                     labelText: 'Default currency',
                     border: OutlineInputBorder(),
@@ -136,7 +136,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
                 // Totals mode
                 DropdownButtonFormField<String>(
-                  value: s.homeTotalMode,
+                  initialValue: s.homeTotalMode,
                   decoration: const InputDecoration(
                     labelText: 'Show totals as',
                     border: OutlineInputBorder(),
@@ -165,7 +165,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 // ✅ NEW: Monthly view (only shown when monthly totals are selected)
                 if (s.homeTotalMode == 'monthly')
                   DropdownButtonFormField<String>(
-                    value: s.monthlyTotalView,
+                    initialValue: s.monthlyTotalView,
                     decoration: const InputDecoration(
                       labelText: 'Monthly view',
                       border: OutlineInputBorder(),

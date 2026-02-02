@@ -5,16 +5,14 @@ import '../data/subscription.dart';
 import '../data/subscription_store.dart';
 import '../data/settings_store.dart';
 import 'add_subscription_sheet.dart';
+import 'home/active_subscriptions_section.dart';
+import 'home/canceled_subscriptions_section.dart';
+import 'home/home_data.dart';
+import 'home/home_helpers.dart';
+import 'home/totals_card.dart';
 import 'settings_page.dart';
 import 'statistics_page.dart';
 import 'subscription_details_page.dart';
-
-class _HomeData {
-  final List<Subscription> subs;
-  final AppSettings settings;
-
-  const _HomeData(this.subs, this.settings);
-}
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -27,7 +25,7 @@ class _HomePageState extends State<HomePage> {
   final _store = SubscriptionStore();
   final _settingsStore = SettingsStore();
 
-  late Future<_HomeData> _dataFuture;
+  late Future<HomeData> _dataFuture;
 
   @override
   void initState() {
@@ -35,13 +33,13 @@ class _HomePageState extends State<HomePage> {
     _dataFuture = _loadData();
   }
 
-  Future<_HomeData> _loadData() async {
+  Future<HomeData> _loadData() async {
     final results = await Future.wait<dynamic>([
       _store.getAll(),
       _settingsStore.get(),
     ]);
 
-    return _HomeData(
+    return HomeData(
       results[0] as List<Subscription>,
       results[1] as AppSettings,
     );
@@ -66,115 +64,6 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  String _nextMonthLabel() {
-    final now = DateTime.now();
-    final nextMonth = DateTime(now.year, now.month + 1, 1);
-    return DateFormat('MMMM').format(nextMonth).toUpperCase();
-  }
-
-  String _currentMonthLabel() {
-    final now = DateTime.now();
-    final curMonth = DateTime(now.year, now.month, 1);
-    return DateFormat('MMMM').format(curMonth).toUpperCase();
-  }
-
-  List<String> _activeCurrencies(List<Subscription> active) {
-    final set = <String>{};
-    for (final s in active) {
-      set.add(s.currency);
-    }
-    final list = set.toList()..sort();
-    return list;
-  }
-
-  Map<String, double> _calculateAnnualTotals(List<Subscription> subs) {
-    final totals = <String, double>{};
-
-    final now = DateTime.now();
-    final startNextMonth = DateTime(now.year, now.month + 1, 1);
-    final endWindow = DateTime(now.year, now.month + 13, 1);
-
-    bool inNextYear(DateTime d) {
-      return !d.isBefore(startNextMonth) && d.isBefore(endWindow);
-    }
-
-    for (final s in subs) {
-      if (!inNextYear(s.renewalDate)) continue;
-      totals.update(s.currency, (v) => v + s.price, ifAbsent: () => s.price);
-    }
-
-    return totals;
-  }
-
-  Map<String, double> _calculateNextMonthTotals(List<Subscription> subs) {
-    final totals = <String, double>{};
-
-    final now = DateTime.now();
-    final startNextMonth = DateTime(now.year, now.month + 1, 1);
-    final startMonthAfter = DateTime(now.year, now.month + 2, 1);
-
-    bool inNextMonth(DateTime d) {
-      return !d.isBefore(startNextMonth) && d.isBefore(startMonthAfter);
-    }
-
-    for (final s in subs) {
-      if (!inNextMonth(s.renewalDate)) continue;
-      totals.update(s.currency, (v) => v + s.price, ifAbsent: () => s.price);
-    }
-
-    return totals;
-  }
-
-  Map<String, double> _calculateCurrentMonthRemainingTotals(
-      List<Subscription> subs) {
-    final totals = <String, double>{};
-
-    final now = DateTime.now();
-    final startToday = DateTime(now.year, now.month, now.day);
-    final startNextMonth = DateTime(now.year, now.month + 1, 1);
-
-    bool inRemainingThisMonth(DateTime d) {
-      final dd = DateTime(d.year, d.month, d.day);
-      return !dd.isBefore(startToday) && dd.isBefore(startNextMonth);
-    }
-
-    for (final s in subs) {
-      if (!inRemainingThisMonth(s.renewalDate)) continue;
-      totals.update(s.currency, (v) => v + s.price, ifAbsent: () => s.price);
-    }
-
-    return totals;
-  }
-
-  int _daysUntil(DateTime date) {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final d = DateTime(date.year, date.month, date.day);
-    return d.difference(today).inDays;
-  }
-
-  Widget _warningChips(Subscription s) {
-    final renewIn = _daysUntil(s.renewalDate);
-    final renewWarn = renewIn >= 0 && renewIn <= 3;
-
-    final int? trialIn = (s.hasFreeTrial && s.freeTrialEnds != null)
-        ? _daysUntil(s.freeTrialEnds!)
-        : null;
-    final trialWarn = trialIn != null && trialIn >= 0 && trialIn <= 3;
-
-    if (!renewWarn && !trialWarn) return const SizedBox.shrink();
-
-    return Wrap(
-      spacing: 6,
-      runSpacing: -6,
-      alignment: WrapAlignment.end,
-      children: [
-        if (renewWarn) Chip(label: Text('Renews in ${renewIn}d')),
-        if (trialWarn) Chip(label: Text('Trial ends in ${trialIn}d')),
-      ],
-    );
-  }
-
   Future<bool> _confirmCancel(String name) async {
     final result = await showDialog<bool>(
       context: context,
@@ -197,28 +86,6 @@ class _HomePageState extends State<HomePage> {
     );
 
     return result ?? false;
-  }
-
-  String _recurrenceLabel(Subscription s) {
-    final rec = (s.recurrence ?? 'monthly');
-    return rec == 'annual' ? 'annual' : 'monthly';
-  }
-
-  String _buildLeftSubtitle(Subscription s, AppSettings st, DateFormat df) {
-    final parts = <String>[];
-
-    if (st.showPrice) {
-      parts.add('${s.price.toStringAsFixed(2)} ${s.currency}');
-    }
-    if (st.showRecurrence) {
-      parts.add(_recurrenceLabel(s));
-    }
-    if (st.showRenewalDate) {
-      parts.add('renews ${df.format(s.renewalDate)}');
-    }
-
-    if (parts.isEmpty) return ' ';
-    return parts.join(' • ');
   }
 
   @override
@@ -252,13 +119,11 @@ class _HomePageState extends State<HomePage> {
           ),
         ],
       ),
-
       floatingActionButton: FloatingActionButton(
         onPressed: _openAddSheet,
         child: const Icon(Icons.add),
       ),
-
-      body: FutureBuilder<_HomeData>(
+      body: FutureBuilder<HomeData>(
         future: _dataFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState != ConnectionState.done) {
@@ -289,12 +154,12 @@ class _HomePageState extends State<HomePage> {
           final monthlyView = st.monthlyTotalView; // 'next' or 'current'
 
           final Map<String, double> totals = (totalsMode == 'annual')
-              ? _calculateAnnualTotals(active)
+              ? calculateAnnualTotals(active)
               : (monthlyView == 'current'
-                  ? _calculateCurrentMonthRemainingTotals(active)
-                  : _calculateNextMonthTotals(active));
+                  ? calculateCurrentMonthRemainingTotals(active)
+                  : calculateNextMonthTotals(active));
 
-          final currencies = _activeCurrencies(active);
+          final currencies = activeCurrencies(active);
 
           active.sort((a, b) => a.renewalDate.compareTo(b.renewalDate));
           canceled.sort((a, b) {
@@ -307,197 +172,56 @@ class _HomePageState extends State<HomePage> {
           final titleText = (totalsMode == 'annual')
               ? 'Total ANNUAL'
               : (st.monthlyTotalView == 'current'
-                  ? 'Total - ${_currentMonthLabel()} (REMAINING)'
-                  : 'Total - ${_nextMonthLabel()}');
+                  ? 'Total - ${currentMonthLabel()} (REMAINING)'
+                  : 'Total - ${nextMonthLabel()}');
 
           return ListView(
             padding: const EdgeInsets.all(12),
             children: [
-              Card(
-                elevation: 0,
-                color: Theme.of(context).colorScheme.surfaceVariant,
-                child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        titleText,
-                        style: const TextStyle(fontWeight: FontWeight.w600),
-                      ),
-                      const SizedBox(height: 8),
-                      if (currencies.isEmpty)
-                        Text(
-                          '0.00 ${st.defaultCurrency}',
-                          style: const TextStyle(fontSize: 16),
-                        )
-                      else
-                        for (final cur in currencies)
-                          Text(
-                            '${(totals[cur] ?? 0).toStringAsFixed(2)} $cur',
-                            style: const TextStyle(fontSize: 16),
-                          ),
-                    ],
-                  ),
-                ),
+              TotalsCard(
+                titleText: titleText,
+                totals: totals,
+                currencies: currencies,
+                settings: st,
               ),
               const SizedBox(height: 12),
-
-              Row(
-                children: [
-                  const Expanded(
-                    child: Text(
-                      'Active',
-                      style:
-                          TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-                    ),
-                  ),
-                  Text('${active.length}'),
-                ],
-              ),
-              const SizedBox(height: 8),
-
-              if (active.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 12),
-                  child: Text('No active subscriptions.'),
-                )
-              else
-                ...active.map((s) {
-                  final leftSubtitle = _buildLeftSubtitle(s, st, df);
-
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: Dismissible(
-                      key: ValueKey('active-${s.id}'),
-                      direction: DismissDirection.endToStart,
-                      background: Container(
-                        alignment: Alignment.centerRight,
-                        padding: const EdgeInsets.only(right: 16),
-                        child: const Icon(Icons.cancel),
-                      ),
-                      confirmDismiss: (_) async => _confirmCancel(s.name),
-                      onDismissed: (_) async {
-                        await _store.cancel(s.id);
-                        await _refresh();
-                      },
-                      child: Card(
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(12),
-                          onTap: () async {
-                            await Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => SubscriptionDetailsPage(
-                                  subscriptionId: s.id,
-                                ),
-                              ),
-                            );
-                            await _refresh();
-                          },
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 12),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        s.name,
-                                        style: const TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(leftSubtitle),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                ConstrainedBox(
-                                  constraints:
-                                      const BoxConstraints(maxWidth: 160),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.end,
-                                    children: [
-                                      if (st.showUsageFrequency)
-                                        Text('${s.usagePerWeek}/wk'),
-                                      if (st.showBadges) ...[
-                                        const SizedBox(height: 6),
-                                        Align(
-                                          alignment: Alignment.centerRight,
-                                          child: _warningChips(s),
-                                        ),
-                                      ],
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
+              ActiveSubscriptionsSection(
+                active: active,
+                settings: st,
+                dateFormat: df,
+                onConfirmCancel: _confirmCancel,
+                onCancel: (s) async {
+                  await _store.cancel(s.id);
+                  await _refresh();
+                },
+                onOpenDetails: (s) async {
+                  await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => SubscriptionDetailsPage(
+                        subscriptionId: s.id,
                       ),
                     ),
                   );
-                }),
-
+                  await _refresh();
+                },
+              ),
               const SizedBox(height: 16),
-
-              Row(
-                children: [
-                  const Expanded(
-                    child: Text(
-                      'History',
-                      style:
-                          TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-                    ),
-                  ),
-                  Text('${canceled.length}'),
-                ],
-              ),
-              const SizedBox(height: 8),
-
-              if (canceled.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 12),
-                  child: Text('No canceled subscriptions yet.'),
-                )
-              else
-                ...canceled.map((s) {
-                  final canceledText = (s.canceledAt == null)
-                      ? 'Canceled'
-                      : 'Canceled on ${df.format(s.canceledAt!)}';
-
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: Card(
-                      child: ListTile(
-                        title: Text(s.name),
-                        subtitle: Text(
-                          '${s.price.toStringAsFixed(2)} ${s.currency} • $canceledText',
-                        ),
-                        trailing: const Chip(label: Text('Canceled')),
-                        onTap: () async {
-                          await Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => SubscriptionDetailsPage(
-                                subscriptionId: s.id,
-                              ),
-                            ),
-                          );
-                          await _refresh();
-                        },
+              CanceledSubscriptionsSection(
+                canceled: canceled,
+                dateFormat: df,
+                onOpenDetails: (s) async {
+                  await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => SubscriptionDetailsPage(
+                        subscriptionId: s.id,
                       ),
                     ),
                   );
-                }),
+                  await _refresh();
+                },
+              ),
             ],
           );
         },

@@ -164,8 +164,9 @@ class _StatisticsPageState extends State<StatisticsPage> {
           // bucket by week: 0-6,7-13,14-20,21-30
           final buckets = [0, 0, 0, 0];
           for (final d in upcoming) {
-            if (d <= 6) buckets[0]++;
-            else if (d <= 13) buckets[1]++;
+            if (d <= 6) {
+              buckets[0]++;
+            } else if (d <= 13) buckets[1]++;
             else if (d <= 20) buckets[2]++;
             else buckets[3]++;
           }
@@ -189,7 +190,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
                   SizedBox(
                     width: 180,
                     child: DropdownButtonFormField<String>(
-                      value: selectedCur,
+                      initialValue: selectedCur,
                       decoration: const InputDecoration(
                         border: OutlineInputBorder(),
                         isDense: true,

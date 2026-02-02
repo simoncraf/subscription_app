@@ -271,7 +271,7 @@ class _AddSubscriptionSheetState extends State<AddSubscriptionSheet> {
                           SizedBox(
                             width: 110,
                             child: DropdownButtonFormField<String>(
-                              value: _currency,
+                              initialValue: _currency,
                               items: const [
                                 DropdownMenuItem(value: 'EUR', child: Text('EUR')),
                                 DropdownMenuItem(value: 'PLN', child: Text('PLN')),
@@ -290,7 +290,7 @@ class _AddSubscriptionSheetState extends State<AddSubscriptionSheet> {
                       const SizedBox(height: 12),
 
                       DropdownButtonFormField<String>(
-                        value: _recurrence,
+                        initialValue: _recurrence,
                         decoration: const InputDecoration(
                           labelText: 'Recurrence',
                           border: OutlineInputBorder(),
@@ -342,7 +342,7 @@ class _AddSubscriptionSheetState extends State<AddSubscriptionSheet> {
                       const SizedBox(height: 12),
 
                       DropdownButtonFormField<String>(
-                        value: (_selectedCard != null && _cards.contains(_selectedCard))
+                        initialValue: (_selectedCard != null && _cards.contains(_selectedCard))
                             ? _selectedCard
                             : null,
                         decoration: const InputDecoration(
@@ -406,7 +406,7 @@ class _AddSubscriptionSheetState extends State<AddSubscriptionSheet> {
 
                       if (_remindersEnabled)
                         DropdownButtonFormField<int>(
-                          value: _reminderDaysBefore,
+                          initialValue: _reminderDaysBefore,
                           decoration: const InputDecoration(
                             labelText: 'Remind me before (days)',
                             border: OutlineInputBorder(),
