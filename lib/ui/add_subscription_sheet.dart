@@ -4,6 +4,7 @@ import 'package:uuid/uuid.dart';
 import '../data/subscription.dart';
 import '../data/subscription_store.dart';
 import '../data/payment_card_store.dart';
+import 'widgets/currency_picker.dart';
 
 class AddSubscriptionSheet extends StatefulWidget {
   final Subscription? initial;
@@ -269,19 +270,11 @@ class _AddSubscriptionSheetState extends State<AddSubscriptionSheet> {
                           ),
                           const SizedBox(width: 12),
                           SizedBox(
-                            width: 110,
-                            child: DropdownButtonFormField<String>(
-                              initialValue: _currency,
-                              items: const [
-                                DropdownMenuItem(value: 'EUR', child: Text('EUR')),
-                                DropdownMenuItem(value: 'PLN', child: Text('PLN')),
-                                DropdownMenuItem(value: 'USD', child: Text('USD')),
-                              ],
-                              onChanged: (v) => setState(() => _currency = v ?? 'EUR'),
-                              decoration: const InputDecoration(
-                                labelText: 'Currency',
-                                border: OutlineInputBorder(),
-                              ),
+                            width: 140,
+                            child: CurrencyPickerField(
+                              value: _currency,
+                              labelText: 'Currency',
+                              onChanged: (v) => setState(() => _currency = v),
                             ),
                           ),
                         ],

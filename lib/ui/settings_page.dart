@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../data/settings_store.dart';
+import 'widgets/currency_picker.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -22,7 +23,7 @@ class _SettingsPageState extends State<SettingsPage> {
     'pl': 'Polish',
   };
 
-  static const _currencies = <String>['EUR', 'PLN', 'USD'];
+
 
   // ✅ NEW: monthly view options
   static const _monthlyViews = <String, String>{
@@ -108,19 +109,10 @@ class _SettingsPageState extends State<SettingsPage> {
                 const SizedBox(height: 12),
 
                 // Default currency
-                DropdownButtonFormField<String>(
-                  initialValue: s.defaultCurrency,
-                  decoration: const InputDecoration(
-                    labelText: 'Default currency',
-                    border: OutlineInputBorder(),
-                  ),
-                  items: _currencies
-                      .map((c) => DropdownMenuItem(value: c, child: Text(c)))
-                      .toList(),
-                  onChanged: (v) {
-                    if (v == null) return;
-                    _update(s.copyWith(defaultCurrency: v));
-                  },
+                CurrencyPickerField(
+                  value: s.defaultCurrency,
+                  labelText: 'Default currency',
+                  onChanged: (v) => _update(s.copyWith(defaultCurrency: v)),
                 ),
 
                 const SizedBox(height: 24),
