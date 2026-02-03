@@ -5,6 +5,7 @@ import '../../data/currencies.dart';
 Future<String?> showCurrencyPicker({
   required BuildContext context,
   required String? selected,
+  List<String>? options,
   String title = 'Select currency',
 }) async {
   return showModalBottomSheet<String>(
@@ -12,7 +13,7 @@ Future<String?> showCurrencyPicker({
     isScrollControlled: true,
     useSafeArea: true,
     builder: (context) {
-      final all = currencyCodesWithCommon();
+      final all = options ?? currencyCodesWithCommon();
       final searchIndex = {
         for (final c in all) c: _normalize(currencySearchText(c)),
       };
@@ -98,12 +99,14 @@ class CurrencyPickerField extends StatelessWidget {
   final String value;
   final ValueChanged<String> onChanged;
   final String labelText;
+  final List<String>? options;
 
   const CurrencyPickerField({
     super.key,
     required this.value,
     required this.onChanged,
     required this.labelText,
+    this.options,
   });
 
   @override
@@ -114,6 +117,7 @@ class CurrencyPickerField extends StatelessWidget {
         final picked = await showCurrencyPicker(
           context: context,
           selected: value,
+          options: options,
         );
         if (picked != null) onChanged(picked);
       },
