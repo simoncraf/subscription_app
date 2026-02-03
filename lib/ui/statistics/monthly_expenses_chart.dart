@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 
-class CostProjectionChart extends StatelessWidget {
-  final Map<DateTime, double> projection;
+class MonthlyExpensesChart extends StatelessWidget {
+  final Map<DateTime, double> totals;
 
-  const CostProjectionChart({
+  const MonthlyExpensesChart({
     super.key,
-    required this.projection,
+    required this.totals,
   });
 
   @override
@@ -16,11 +16,11 @@ class CostProjectionChart extends StatelessWidget {
     final labelStyle = Theme.of(context).textTheme.bodySmall?.copyWith(
           color: colors.onSurfaceVariant,
         );
-    final months = projection.keys.toList()..sort();
+    final months = totals.keys.toList()..sort();
     final monthFmt = DateFormat('MMM');
 
     return SizedBox(
-      height: 280,
+      height: 260,
       child: Card(
         elevation: 0,
         color: colors.surfaceContainerHighest,
@@ -30,9 +30,9 @@ class CostProjectionChart extends StatelessWidget {
             duration: const Duration(milliseconds: 350),
             switchInCurve: Curves.easeOutCubic,
             switchOutCurve: Curves.easeInCubic,
-            child: LineChart(
+            child: BarChart(
               key: ValueKey(Object.hashAll(months)),
-              LineChartData(
+              BarChartData(
                 gridData: FlGridData(
                   show: true,
                   drawVerticalLine: false,
@@ -60,56 +60,41 @@ class CostProjectionChart extends StatelessWidget {
                   bottomTitles: AxisTitles(
                     sideTitles: SideTitles(
                       showTitles: true,
-                      interval: 1,
                       getTitlesWidget: (value, meta) {
-                        final i = value.toInt();
-                        if (i < 0 || i >= months.length) {
+                        final idx = value.toInt();
+                        if (idx < 0 || idx >= months.length) {
                           return const SizedBox.shrink();
                         }
                         return Padding(
                           padding: const EdgeInsets.only(top: 6),
                           child:
-                              Text(monthFmt.format(months[i]), style: labelStyle),
+                              Text(monthFmt.format(months[idx]), style: labelStyle),
                         );
                       },
                     ),
                   ),
                 ),
-                minX: 0,
-                maxX: (months.length - 1).toDouble(),
-                lineBarsData: [
-                  LineChartBarData(
-                    isCurved: true,
-                    barWidth: 3,
-                    color: colors.primary,
-                    dotData: FlDotData(
-                      show: true,
-                      getDotPainter: (spot, percent, bar, index) =>
-                          FlDotCirclePainter(
-                        radius: 3,
-                        color: colors.primary,
-                        strokeWidth: 1,
-                        strokeColor: colors.surface,
+                barGroups: List.generate(months.length, (i) {
+                  final m = months[i];
+                  return BarChartGroupData(
+                    x: i,
+                    barRods: [
+                      BarChartRodData(
+                        toY: (totals[m] ?? 0).toDouble(),
+                        width: 20,
+                        borderRadius: BorderRadius.circular(8),
+                        gradient: LinearGradient(
+                          colors: [
+                            colors.tertiary,
+                            colors.tertiary.withValues(alpha: 0.6),
+                          ],
+                          begin: Alignment.bottomCenter,
+                          end: Alignment.topCenter,
+                        ),
                       ),
-                    ),
-                    belowBarData: BarAreaData(
-                      show: true,
-                      gradient: LinearGradient(
-                        colors: [
-                          colors.primary.withValues(alpha: 0.3),
-                          colors.primary.withValues(alpha: 0.0),
-                        ],
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                      ),
-                    ),
-                    spots: List.generate(months.length, (i) {
-                      final m = months[i];
-                      return FlSpot(i.toDouble(),
-                          (projection[m] ?? 0).toDouble());
-                    }),
-                  ),
-                ],
+                    ],
+                  );
+                }),
               ),
             ),
           ),

@@ -70,6 +70,39 @@ Map<DateTime, double> projectNext6Months({
   return totals;
 }
 
+/// Returns a 4-month projection including the current month.
+Map<DateTime, double> projectCurrentAndNext3Months({
+  required List<Subscription> active,
+  required String currency,
+}) {
+  final now = DateTime.now();
+  final start = startOfMonth(DateTime(now.year, now.month, 1));
+  final months = List.generate(4, (i) => addMonths(start, i));
+
+  final totals = {for (final m in months) m: 0.0};
+
+  for (final s in active.where((x) => x.currency == currency)) {
+    final rec = (s.recurrence ?? 'monthly');
+
+    if (rec == 'annual') {
+      for (final m in months) {
+        if (isSameMonth(s.renewalDate, m)) {
+          totals[m] = (totals[m] ?? 0) + s.price;
+        }
+      }
+    } else {
+      for (final m in months) {
+        final occ = nextMonthlyOccurrence(s.renewalDate, m);
+        if (isSameMonth(occ, m)) {
+          totals[m] = (totals[m] ?? 0) + s.price;
+        }
+      }
+    }
+  }
+
+  return totals;
+}
+
 List<int> buildUpcomingBuckets({
   required List<Subscription> active,
   required String currency,

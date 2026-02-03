@@ -8,7 +8,7 @@ class StatisticsNotes extends StatelessWidget {
     return Text(
       'Notes:\n'
       '* Charts are shown per currency to avoid mixing values.\n'
-      '* Projection assumes your stored renewalDate is the next renewal date.',
+      '* Monthly expenses are estimated based on subscription frequency.\n',
       style: Theme.of(context).textTheme.bodySmall,
     );
   }

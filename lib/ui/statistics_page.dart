@@ -4,8 +4,8 @@ import '../data/settings_store.dart';
 import '../data/subscription.dart';
 import '../data/subscription_store.dart';
 import 'statistics/active_vs_canceled_chart.dart';
-import 'statistics/cost_projection_chart.dart';
 import 'statistics/currency_selector_row.dart';
+import 'statistics/monthly_expenses_chart.dart';
 import 'statistics/section_title.dart';
 import 'statistics/statistics_notes.dart';
 import 'statistics/stats_data.dart';
@@ -48,7 +48,10 @@ class _StatisticsPageState extends State<StatisticsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Statistics')),
+      appBar: AppBar(
+        title: const Text('Statistics'),
+        centerTitle: true,
+      ),
       body: FutureBuilder<StatsData>(
         future: _future,
         builder: (context, snapshot) {
@@ -71,7 +74,10 @@ class _StatisticsPageState extends State<StatisticsPage> {
 
           final selectedCur = _selectedCurrency ?? data.settings.defaultCurrency;
           final buckets = buildUpcomingBuckets(active: active, currency: selectedCur);
-          final projection = projectNext6Months(active: active, currency: selectedCur);
+          final monthlyExpenses = projectCurrentAndNext3Months(
+            active: active,
+            currency: selectedCur,
+          );
 
           return ListView(
             padding: const EdgeInsets.all(16),
@@ -83,15 +89,17 @@ class _StatisticsPageState extends State<StatisticsPage> {
                 selected: selectedCur,
                 onChanged: (v) => setState(() => _selectedCurrency = v),
               ),
+              const SectionTitle(
+                text: 'Monthly expenses',
+              ),
+              MonthlyExpensesChart(totals: monthlyExpenses),
+              const SectionTitle(text: 'Upcoming renewals'),
+              UpcomingRenewalsChart(buckets: buckets),
               const SectionTitle(text: 'Active vs Canceled'),
               ActiveVsCanceledChart(
                 activeCount: active.length,
                 canceledCount: canceled.length,
               ),
-              const SectionTitle(text: 'Upcoming renewals (next 30 days)'),
-              UpcomingRenewalsChart(buckets: buckets),
-              const SectionTitle(text: 'Cost projection (next 6 full months)'),
-              CostProjectionChart(projection: projection),
               const SizedBox(height: 12),
               const StatisticsNotes(),
             ],
