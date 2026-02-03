@@ -5,6 +5,7 @@ class AppSettings {
   final String defaultCurrency; // e.g. 'EUR'
   final String homeTotalMode; // 'monthly' | 'annual'
   final String monthlyTotalView; // 'next' | 'current'
+  final String homeActiveSort; // 'renewal' | 'price_desc' | 'alpha'
   final bool showPrice;
   final bool showRecurrence;
   final bool showRenewalDate;
@@ -16,6 +17,7 @@ class AppSettings {
     required this.defaultCurrency,
     required this.homeTotalMode,
     required this.monthlyTotalView,
+    required this.homeActiveSort,
     required this.showPrice,
     required this.showRecurrence,
     required this.showRenewalDate,
@@ -28,6 +30,7 @@ class AppSettings {
         defaultCurrency: 'EUR',
         homeTotalMode: 'monthly',
         monthlyTotalView: 'next',
+        homeActiveSort: 'renewal',
         showPrice: true,
         showRecurrence: true,
         showRenewalDate: true,
@@ -40,6 +43,7 @@ class AppSettings {
     String? defaultCurrency,
     String? homeTotalMode,
     String? monthlyTotalView,
+    String? homeActiveSort,
     bool? showPrice,
     bool? showRecurrence,
     bool? showRenewalDate,
@@ -51,6 +55,7 @@ class AppSettings {
       defaultCurrency: defaultCurrency ?? this.defaultCurrency,
       homeTotalMode: homeTotalMode ?? this.homeTotalMode,
       monthlyTotalView: monthlyTotalView ?? this.monthlyTotalView,
+      homeActiveSort: homeActiveSort ?? this.homeActiveSort,
       showPrice: showPrice ?? this.showPrice,
       showRecurrence: showRecurrence ?? this.showRecurrence,
       showRenewalDate: showRenewalDate ?? this.showRenewalDate,
@@ -68,6 +73,7 @@ class SettingsStore {
   static const _kDefaultCurrency = 'defaultCurrency';
   static const _kHomeTotalMode = 'homeTotalMode';
   static const _kMonthlyTotalView = 'monthlyTotalView';
+  static const _kHomeActiveSort = 'homeActiveSort';
   static const _kShowPrice = 'showPrice';
   static const _kShowRecurrence = 'showRecurrence';
   static const _kShowRenewalDate = 'showRenewalDate';
@@ -85,6 +91,7 @@ class SettingsStore {
       defaultCurrency: (box.get(_kDefaultCurrency) as String?) ?? d.defaultCurrency,
       homeTotalMode: (box.get(_kHomeTotalMode) as String?) ?? d.homeTotalMode,
       monthlyTotalView: (box.get(_kMonthlyTotalView) as String?) ?? d.monthlyTotalView,
+      homeActiveSort: (box.get(_kHomeActiveSort) as String?) ?? d.homeActiveSort,
       showPrice: (box.get(_kShowPrice) as bool?) ?? d.showPrice,
       showRecurrence: (box.get(_kShowRecurrence) as bool?) ?? d.showRecurrence,
       showRenewalDate: (box.get(_kShowRenewalDate) as bool?) ?? d.showRenewalDate,
@@ -99,6 +106,7 @@ class SettingsStore {
     await box.put(_kDefaultCurrency, s.defaultCurrency);
     await box.put(_kHomeTotalMode, s.homeTotalMode);
     await box.put(_kMonthlyTotalView, s.monthlyTotalView);
+    await box.put(_kHomeActiveSort, s.homeActiveSort);
     await box.put(_kShowPrice, s.showPrice);
     await box.put(_kShowRecurrence, s.showRecurrence);
     await box.put(_kShowRenewalDate, s.showRenewalDate);

@@ -10,6 +10,8 @@ class ActiveSubscriptionsSection extends StatelessWidget {
   final List<Subscription> active;
   final AppSettings settings;
   final DateFormat dateFormat;
+  final String sortValue;
+  final ValueChanged<String> onSortChange;
   final Future<bool> Function(String name) onConfirmCancel;
   final Future<void> Function(Subscription subscription) onCancel;
   final Future<void> Function(Subscription subscription) onOpenDetails;
@@ -19,6 +21,8 @@ class ActiveSubscriptionsSection extends StatelessWidget {
     required this.active,
     required this.settings,
     required this.dateFormat,
+    required this.sortValue,
+    required this.onSortChange,
     required this.onConfirmCancel,
     required this.onCancel,
     required this.onOpenDetails,
@@ -38,6 +42,18 @@ class ActiveSubscriptionsSection extends StatelessWidget {
               ),
             ),
             Text('${active.length}'),
+            const SizedBox(width: 8),
+            PopupMenuButton<String>(
+              tooltip: 'Sort',
+              icon: const Icon(Icons.sort, size: 20),
+              initialValue: sortValue,
+              onSelected: onSortChange,
+              itemBuilder: (context) => const [
+                PopupMenuItem(value: 'renewal', child: Text('Renewal date')),
+                PopupMenuItem(value: 'price_desc', child: Text('Price (high → low)')),
+                PopupMenuItem(value: 'alpha', child: Text('Alphabetical')),
+              ],
+            ),
           ],
         ),
         const SizedBox(height: 8),

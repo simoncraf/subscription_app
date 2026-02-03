@@ -161,7 +161,17 @@ class _HomePageState extends State<HomePage> {
 
           final currencies = activeCurrencies(active);
 
-          active.sort((a, b) => a.renewalDate.compareTo(b.renewalDate));
+          switch (st.homeActiveSort) {
+            case 'price_desc':
+              active.sort((a, b) => b.price.compareTo(a.price));
+              break;
+            case 'alpha':
+              active.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+              break;
+            case 'renewal':
+            default:
+              active.sort((a, b) => a.renewalDate.compareTo(b.renewalDate));
+          }
           canceled.sort((a, b) {
             final at = a.canceledAt ?? DateTime.fromMillisecondsSinceEpoch(0);
             final bt = b.canceledAt ?? DateTime.fromMillisecondsSinceEpoch(0);
@@ -189,6 +199,11 @@ class _HomePageState extends State<HomePage> {
                 active: active,
                 settings: st,
                 dateFormat: df,
+                sortValue: st.homeActiveSort,
+                onSortChange: (value) async {
+                  await _settingsStore.set(st.copyWith(homeActiveSort: value));
+                  await _refresh();
+                },
                 onConfirmCancel: _confirmCancel,
                 onCancel: (s) async {
                   await _store.cancel(s.id);
